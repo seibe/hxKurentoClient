@@ -1,5 +1,6 @@
 package ;
 
+import express.Express;
 import haxe.Json;
 import js.Error;
 import js.Node;
@@ -10,8 +11,9 @@ import kurento.core.MediaPipeline;
 import kurento.elements.complexTypes.IceCandidate;
 import kurento.elements.WebRtcEndpoint;
 import kurento.kurentoClient.KurentoClient;
+import minimist.Minimist;
+import ws.WsServer;
 
-typedef WsSocket = Dynamic;
 typedef SessionData = {
 	pipeline:MediaPipeline,
 	endpoint:WebRtcEndpoint
@@ -33,27 +35,21 @@ class Main
 	
 	function new():Void
 	{
-		var cookieParser = Node.require("cookie-parser");
-		var express = Node.require("express");
-		var session = Node.require("express-session");
-		var minimist = Node.require("minimist");
-		var ws = Node.require("ws");
-		
-		_argv = minimist(Node.process.argv.slice(2), {
+		_argv = Minimist.parse(Node.process.argv.slice(2), {
 			"default": {
 				as_uri: AS_URI,
 				ws_uri: WS_URI
 			}
 		});
 		
-		var app = express();
+		var app = Express.app();
 		
 		/*
 		 * Management of _sessions
 		 */
-		app.use(cookieParser());
+		app.use(Express.cookieParser());
 		
-		var sessionHandler = session({
+		var sessionHandler = Express.session({
 			secret: "none",
 			rolling: true,
 			resave: true,
@@ -76,8 +72,8 @@ class Main
 			trace("Kurento Tutorial started");
 			trace("Open" + Url.format(asUrl) + " with a WebRTC capable browser");
 		});
-		var wss = untyped __js__("new ws.Server({0})", {
-			server: server,
+		var wss = new WsServer({
+			server: cast server,
 			path: "/helloworld"
 		});
 		

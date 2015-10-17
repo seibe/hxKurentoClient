@@ -9,6 +9,7 @@ import js.node.Url;
 import js.Promise;
 import kurento.core.MediaPipeline;
 import kurento.elements.complexTypes.IceCandidate;
+import kurento.elements.RecorderEndpoint;
 import kurento.elements.WebRtcEndpoint;
 import kurento.kurentoClient.KurentoClient;
 import minimist.Minimist;
@@ -18,13 +19,15 @@ typedef SessionData = {
 	id:String,
 	?ws:WsSocket,
 	?pipeline:MediaPipeline,
-	endpoint:WebRtcEndpoint
+	endpoint:WebRtcEndpoint,
+	?recorder:RecorderEndpoint
 };
 
 class Main 
 {
 	private static inline var AS_URI:String = "http://localhost:8080/";
 	private static inline var WS_URI:String = "ws://localhost:8888/kurento";
+	private static inline var MV_DIR:String = "file:///tmp";
 	private var NO_PRESENTER_MESSAGE(default, never):String = "No active presenter. Try again later...";
 	
 	private var _argv:Dynamic;
@@ -68,7 +71,7 @@ class Main
 		});
 		var wss = new WsServer({
 			server: cast server,
-			path: "/one2many"
+			path: "/one2many-advanced"
 		});
 		
 		/*
@@ -157,7 +160,8 @@ class Main
 			_presenter = {
 				id: sessionId,
 				pipeline: null,
-				endpoint: null
+				endpoint: null,
+				recorder: null
 			};
 			
 			// 1. create client
@@ -172,22 +176,32 @@ class Main
 					reject(error);
 					return null;
 				})
-				.then(function(pipeline:MediaPipeline):Promise<WebRtcEndpoint> {
+				.then(function(pipeline:MediaPipeline):Promise<Dynamic> {
 					if (_presenter == null) return Promise.reject(new Error(NO_PRESENTER_MESSAGE));
 					_presenter.pipeline = pipeline;
-					// 3. create endpoint
-					return pipeline.create("WebRtcEndpoint");
-				})
-				.then(function(endpoint:WebRtcEndpoint):Promise<Dynamic> {
-					if (_presenter == null) return Promise.reject(new Error(NO_PRESENTER_MESSAGE));
-					_presenter.endpoint = endpoint;
-					exchangeCandidates(sessionId, endpoint, ws);
-					// 4. offer
-					var p1 = endpoint.processOffer(sdpOffer);
-					var p2 = endpoint.gatherCandidates();
+					// 3. create endpoints
+					var p1 = pipeline.create("WebRtcEndpoint");
+					// 4. create recoder
+					var filepath = Path.join(MV_DIR, Std.string( Date.now().getTime() ) + ".webm");
+					var p2 = pipeline.create("RecorderEndpoint", { uri: filepath });
 					return Promise.all([p1, p2]);
 				})
-				.then(function(results:Array<Dynamic>):Promise<Dynamic> {
+				.then(function(endpoints:Array<Dynamic>):Promise<Dynamic> {
+					if (_presenter == null) return Promise.reject(new Error(NO_PRESENTER_MESSAGE));
+					_presenter.endpoint = endpoints[0];
+					_presenter.recorder = endpoints[1];
+					// 5. connect recorder
+					return _presenter.endpoint.connect(_presenter.recorder);
+				})
+				.then(function(dummy:Dynamic):Promise<Dynamic> {
+					_presenter.recorder.record();
+					exchangeCandidates(sessionId, _presenter.endpoint, ws);
+					// 6. offer
+					var p1 = _presenter.endpoint.processOffer(sdpOffer);
+					var p2 = _presenter.endpoint.gatherCandidates();
+					return Promise.all([p1, p2]);
+				})
+				.then(function(results:Array<Dynamic>):Promise<RecorderEndpoint> {
 					var sdpAnswer:String = results[0];
 					if (_presenter == null) return Promise.reject(new Error(NO_PRESENTER_MESSAGE));
 					// finish!
@@ -195,7 +209,7 @@ class Main
 					return null;
 				})
 				.catchError(function(error:Error):Promise<MediaPipeline> {
-					// rejected 2~4
+					// rejected 2~6
 					stop(sessionId);
 					reject(error);
 					return null;
@@ -262,6 +276,10 @@ class Main
 						id: "stopCommunication"
 					}));
 				}
+			}
+			if (_presenter.recorder != null) {
+				_presenter.recorder.stop();
+				trace("stop recording");
 			}
 			_presenter.pipeline.release();
 			_presenter = null;
