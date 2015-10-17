@@ -13,3 +13,8 @@
 
 -cp demo/kurento-one2many-call
 -js demo/kurento-one2many-call/server.hx.js
+
+--next
+
+-cp demo/kurento-one2many-call-advanced
+-js demo/kurento-one2many-call-advanced/server.hx.js
