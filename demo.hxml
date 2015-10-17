@@ -1,0 +1,15 @@
+-main Main
+-cp src
+-dce full
+-lib hxnodejs
+#-debug
+
+--each
+
+-cp demo/kurento-hello-world
+-js demo/kurento-hello-world/server.hx.js
+
+--next
+
+-cp demo/kurento-one2many-call
+-js demo/kurento-one2many-call/server.hx.js

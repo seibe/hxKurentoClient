@@ -1,0 +1,10 @@
+{
+  "name": "KurentoClient",
+  "url": "https://github.com/seibe/hxKurentoClient/",
+  "license": "LGPL",
+  "tags": [ "js", "node.js", "Kurento" ],
+  "description": "A haxe extern for KurentoClient",
+  "version": "0.0.1",
+  "releasenote": "first release.",
+  "contributors": ["seibe"]
+}
