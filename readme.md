@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/seibe/hxKurentoClient.svg)](https://travis-ci.org/seibe/hxKurentoClient)
+
 # hxKurentoClient
 
 A Haxe extern for Kurento Client
